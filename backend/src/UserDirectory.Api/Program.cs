@@ -85,8 +85,11 @@ builder.Services
     {
         var issuer = builder.Configuration["Auth:Issuer"] ?? "UserDirectory.Api";
         var audience = builder.Configuration["Auth:Audience"] ?? "user-directory-api";
-        var localJwtKey = builder.Configuration["Auth:LocalJwtKey"]
-            ?? throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
+        var localJwtKey = builder.Configuration["Auth:LocalJwtKey"];
+        if (string.IsNullOrWhiteSpace(localJwtKey))
+        {
+            throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
+        }
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -95,7 +98,7 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(localJwtKey)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(localJwtKey.Trim())),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };

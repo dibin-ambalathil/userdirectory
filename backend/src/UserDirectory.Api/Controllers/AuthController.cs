@@ -25,9 +25,15 @@ public sealed class AuthController : ControllerBase
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public ActionResult<LoginResponse> Login([FromBody] LoginRequest request)
+    public ActionResult<LoginResponse> Login([FromBody] LoginRequest? request)
     {
+        if (request is null)
+        {
+            return BadRequest(new ErrorResponse("Email and password are required."));
+        }
+
         var email = request.Email?.Trim() ?? string.Empty;
         var password = request.Password ?? string.Empty;
 
@@ -49,8 +55,12 @@ public sealed class AuthController : ControllerBase
     {
         var issuer = _configuration["Auth:Issuer"] ?? "UserDirectory.Api";
         var audience = _configuration["Auth:Audience"] ?? "user-directory-api";
-        var jwtKey = _configuration["Auth:LocalJwtKey"]
-            ?? throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
+        var jwtKey = _configuration["Auth:LocalJwtKey"];
+        if (string.IsNullOrWhiteSpace(jwtKey))
+        {
+            throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
+        }
+
         var expirationMinutes = Math.Max(_configuration.GetValue("Auth:TokenExpirationMinutes", 120), 1);
 
         var now = DateTime.UtcNow;
@@ -65,7 +75,7 @@ public sealed class AuthController : ControllerBase
         };
 
         var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey.Trim())),
             SecurityAlgorithms.HmacSha256);
 
         var jwt = new JwtSecurityToken(
