@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: userdirectory-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Data Source=/data/app.db
+      Auth__Authority: https://YOUR_OIDC_DOMAIN/
+      Auth__Audience: user-directory-api
+      Auth__RequireHttpsMetadata: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - sqlite-data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: userdirectory-frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  sqlite-data:

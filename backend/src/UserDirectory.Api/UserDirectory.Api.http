@@ -1,0 +1,25 @@
+@UserDirectory.Api_HostAddress = https://localhost:7083
+
+GET {{UserDirectory.Api_HostAddress}}/api/users
+Accept: application/json
+
+###
+
+GET {{UserDirectory.Api_HostAddress}}/api/users/{{id}}
+Accept: application/json
+
+###
+
+POST {{UserDirectory.Api_HostAddress}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+	"name": "Sample User",
+	"age": 30,
+	"city": "Mumbai",
+	"state": "Maharashtra",
+	"pincode": "400001"
+}
+
+###
