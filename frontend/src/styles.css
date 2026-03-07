@@ -250,19 +250,6 @@ body {
   margin: 0 auto;
 }
 
-.login-help {
-  margin: 0.9rem 0 0;
-  color: var(--text-soft);
-  font-size: 0.9rem;
-}
-
-.login-help code {
-  background: #eef4ff;
-  border-radius: 6px;
-  padding: 0.08rem 0.36rem;
-  color: #1e355c;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);

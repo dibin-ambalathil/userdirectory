@@ -97,10 +97,6 @@ export function LoginPage(): JSX.Element {
           </button>
         </div>
       </form>
-
-      <p className="login-help">
-        Test credentials: <code>test@mail.com</code> / <code>Qwer@4321</code>
-      </p>
     </section>
   );
 }
