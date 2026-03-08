@@ -63,23 +63,20 @@ export function EditUserPage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { id } = useParams<{ id: string }>();
-
-  if (!id) {
-    return <div className="error-container">No user ID provided.</div>;
-  }
-
   const auth = useAuthState();
   const navigate = useNavigate();
-
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
+  // Guard AFTER all hooks — satisfies rules of hooks
   useEffect(() => {
+    if (!id) return;
+
     let isMounted = true;
 
     async function loadUser(): Promise<void> {
       try {
         setIsLoading(true);
-        const fetchedUser = await getUserById(id);
+        const fetchedUser = await getUserById(id as string);
         if (isMounted) {
           setUser(fetchedUser);
           setValues({
@@ -117,6 +114,11 @@ export function EditUserPage(): JSX.Element {
     };
   }, [id, auth, navigate]);
 
+  // Early return AFTER all hooks
+  if (!id) {
+    return <div className="error-container">No user ID provided.</div>;
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -131,7 +133,7 @@ export function EditUserPage(): JSX.Element {
     try {
       setIsSubmitting(true);
 
-      await updateUser(id, {
+      await updateUser(id as string, {
         name: values.name.trim(),
         age: Number(values.age),
         city: values.city.trim(),
