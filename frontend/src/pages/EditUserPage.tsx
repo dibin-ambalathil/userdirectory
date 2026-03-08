@@ -63,17 +63,17 @@ export function EditUserPage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { id } = useParams<{ id: string }>();
+
+  if (!id) {
+    return <div className="error-container">No user ID provided.</div>;
+  }
+
   const auth = useAuthState();
   const navigate = useNavigate();
 
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
   useEffect(() => {
-    if (!id) {
-      navigate('/users', { replace: true });
-      return;
-    }
-
     let isMounted = true;
 
     async function loadUser(): Promise<void> {
@@ -119,10 +119,6 @@ export function EditUserPage(): JSX.Element {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-
-    if (!id) {
-      return;
-    }
 
     const validationErrors = validate(values);
     setErrors(validationErrors);
