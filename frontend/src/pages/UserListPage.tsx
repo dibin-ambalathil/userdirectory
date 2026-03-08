@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getApiErrorMessage, getUsers, deleteUser } from '../api/usersApi';
@@ -77,6 +77,33 @@ export function UserListPage(): JSX.Element {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
+  const handleDelete = useCallback(
+    async (userId: string): Promise<void> => {
+      if (!window.confirm('Are you sure you want to delete this user?')) {
+        return;
+      }
+
+      try {
+        setDeletingUserId(userId);
+        setError(null);
+
+        await deleteUser(userId);
+        setUsers((current) => current.filter((user) => user.id !== userId));
+        setToastMessage('User deleted successfully.');
+      } catch (requestError) {
+        if (requestError instanceof AxiosError && requestError.response?.status === 401) {
+          auth.logout();
+          navigate('/login', { replace: true, state: { from: '/users' } });
+          return;
+        }
+        setError(getApiErrorMessage(requestError));
+      } finally {
+        setDeletingUserId(null);
+      }
+    },
+    [auth, navigate]
+  );
+
   const content = useMemo(() => {
     if (isLoading) {
       return <LoadingSpinner label="Loading users..." />;
@@ -135,31 +162,7 @@ export function UserListPage(): JSX.Element {
         </table>
       </div>
     );
-  }, [isLoading, error, users, deletingUserId, navigate]);
-
-  async function handleDelete(userId: string): Promise<void> {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
-      return;
-    }
-
-    try {
-      setDeletingUserId(userId);
-      setError(null);
-
-      await deleteUser(userId);
-      setUsers((current) => current.filter((user) => user.id !== userId));
-      setToastMessage('User deleted successfully.');
-    } catch (requestError) {
-      if (requestError instanceof AxiosError && requestError.response?.status === 401) {
-        auth.logout();
-        navigate('/login', { replace: true, state: { from: '/users' } });
-        return;
-      }
-      setError(getApiErrorMessage(requestError));
-    } finally {
-      setDeletingUserId(null);
-    }
-  }
+  }, [isLoading, error, users, deletingUserId, navigate, handleDelete]);
 
   return (
     <section className="page-card">
