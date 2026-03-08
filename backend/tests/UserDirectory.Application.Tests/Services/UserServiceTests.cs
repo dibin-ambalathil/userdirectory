@@ -99,10 +99,158 @@ public sealed class UserServiceTests
             new CreateUserRequestValidator(),
             new UpdateUserRequestValidator());
 
-        var result = await service.GetAllAsync();
+    [Fact]
+    public async Task GetByIdAsync_WhenUserExists_ReturnsUser()
+    {
+        var user = new User(
+            Guid.NewGuid(),
+            "Priya Sharma",
+            34,
+            "Pune",
+            "Maharashtra",
+            "411001",
+            DateTime.UtcNow);
 
-        Assert.Single(result);
-        Assert.Equal("Nikhil Das", result[0].Name);
-        Assert.Equal("Kochi", result[0].City);
+        var repositoryMock = new Mock<IUserRepository>();
+        repositoryMock
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var service = new UserService(
+            repositoryMock.Object,
+            new CreateUserRequestValidator(),
+            new UpdateUserRequestValidator());
+
+        var result = await service.GetByIdAsync(Guid.NewGuid());
+
+        Assert.NotNull(result);
+        Assert.Equal("Priya Sharma", result!.Name);
+        Assert.Equal("Pune", result.City);
     }
-}
+
+    [Fact]
+    public async Task GetByIdAsync_WhenUserDoesNotExist_ReturnsNull()
+    {
+        var repositoryMock = new Mock<IUserRepository>();
+        repositoryMock
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var service = new UserService(
+            repositoryMock.Object,
+            new CreateUserRequestValidator(),
+            new UpdateUserRequestValidator());
+
+        var result = await service.GetByIdAsync(Guid.NewGuid());
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenUserExists_UpdatesAndReturnsTrue()
+    {
+        var user = new User(
+            Guid.NewGuid(),
+            "Old Name",
+            25,
+            "Old City",
+            "Old State",
+            "000000",
+            DateTime.UtcNow);
+
+        var repositoryMock = new Mock<IUserRepository>();
+        repositoryMock
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        repositoryMock
+            .Setup(repository => repository.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var service = new UserService(
+            repositoryMock.Object,
+            new CreateUserRequestValidator(),
+            new UpdateUserRequestValidator());
+
+        var updated = await service.UpdateAsync(Guid.NewGuid(), new UpdateUserRequest
+        {
+            Name = "Priya Sharma",
+            Age = 34,
+            City = "Pune",
+            State = "Maharashtra",
+            Pincode = "411001"
+        });
+
+        Assert.True(updated);
+        Assert.Equal("Priya Sharma", user.Name);
+        Assert.Equal(34, user.Age);
+        Assert.Equal("Pune", user.City);
+
+        repositoryMock.Verify(
+            repository => repository.Update(It.IsAny<User>()),
+            Times.Once);
+        repositoryMock.Verify(
+            repository => repository.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenUserExists_DeletesAndReturnsTrue()
+    {
+        var user = new User(
+            Guid.NewGuid(),
+            "User to Delete",
+            30,
+            "City",
+            "State",
+            "123456",
+            DateTime.UtcNow);
+
+        var repositoryMock = new Mock<IUserRepository>();
+        repositoryMock
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        repositoryMock
+            .Setup(repository => repository.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var service = new UserService(
+            repositoryMock.Object,
+            new CreateUserRequestValidator(),
+            new UpdateUserRequestValidator());
+
+        var deleted = await service.DeleteAsync(Guid.NewGuid());
+
+        Assert.True(deleted);
+
+        repositoryMock.Verify(
+            repository => repository.Remove(It.IsAny<User>()),
+            Times.Once);
+        repositoryMock.Verify(
+            repository => repository.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenUserDoesNotExist_ReturnsFalse()
+    {
+        var repositoryMock = new Mock<IUserRepository>();
+        repositoryMock
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var service = new UserService(
+            repositoryMock.Object,
+            new CreateUserRequestValidator(),
+            new UpdateUserRequestValidator());
+
+        var deleted = await service.DeleteAsync(Guid.NewGuid());
+
+        Assert.False(deleted);
+
+        repositoryMock.Verify(
+            repository => repository.Remove(It.IsAny<User>()),
+            Times.Never);
+        repositoryMock.Verify(
+            repository => repository.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }

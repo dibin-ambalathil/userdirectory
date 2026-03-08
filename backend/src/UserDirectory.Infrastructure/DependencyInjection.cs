@@ -29,6 +29,7 @@ public static class DependencyInjection
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var hostEnvironment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
 
+        // Ensure the database directory exists (important for SQLite)
         var dataSource = dbContext.Database.GetDbConnection().DataSource;
         if (!string.IsNullOrWhiteSpace(dataSource))
         {
@@ -39,7 +40,10 @@ public static class DependencyInjection
             }
         }
 
+        // Run database migrations
         await dbContext.Database.MigrateAsync();
+
+        // Seed initial data (users, roles, etc.)
         await UserSeeder.SeedAsync(dbContext);
         await AuthSeeder.SeedAsync(dbContext, configuration, hostEnvironment);
     }

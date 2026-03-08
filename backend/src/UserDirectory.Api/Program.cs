@@ -168,6 +168,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Initialize and seed the database on application startup
 await app.Services.InitializeDatabaseAsync();
 
 app.Run();

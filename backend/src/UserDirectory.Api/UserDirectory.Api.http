@@ -23,3 +23,20 @@ Content-Type: application/json
 }
 
 ###
+
+PUT {{UserDirectory.Api_HostAddress}}/api/users/{{id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+	"name": "Updated User",
+	"age": 31,
+	"city": "Delhi",
+	"state": "Delhi",
+	"pincode": "110001"
+}
+
+###
+
+DELETE {{UserDirectory.Api_HostAddress}}/api/users/{{id}}
+Authorization: Bearer {{token}}

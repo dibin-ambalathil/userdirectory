@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { UserListPage } from './pages/UserListPage';
 import { AddUserPage } from './pages/AddUserPage';
+import { EditUserPage } from './pages/EditUserPage';
 import { LoginPage } from './pages/LoginPage';
 
 export function App(): JSX.Element {
@@ -26,6 +27,14 @@ export function App(): JSX.Element {
             element={
               <ProtectedRoute>
                 <AddUserPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EditUserPage />
               </ProtectedRoute>
             }
           />

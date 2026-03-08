@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getApiErrorMessage, getUsers } from '../api/usersApi';
+import { getApiErrorMessage, getUsers, deleteUser } from '../api/usersApi';
 import { useAuthState } from '../auth/useAuthState';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Toast } from '../components/Toast';
@@ -16,6 +16,7 @@ export function UserListPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -99,6 +100,7 @@ export function UserListPage(): JSX.Element {
               <th>City</th>
               <th>State</th>
               <th>Pincode</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -109,13 +111,55 @@ export function UserListPage(): JSX.Element {
                 <td>{user.city}</td>
                 <td>{user.state}</td>
                 <td>{user.pincode}</td>
+                <td>
+                  <div className="action-buttons">
+                    <button
+                      className="edit-button"
+                      onClick={() => navigate(`/users/${user.id}/edit`)}
+                      disabled={deletingUserId !== null}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="delete-button"
+                      onClick={() => void handleDelete(user.id)}
+                      disabled={deletingUserId !== null}
+                    >
+                      {deletingUserId === user.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
     );
-  }, [isLoading, error, users]);
+  }, [isLoading, error, users, deletingUserId, navigate]);
+
+  async function handleDelete(userId: string): Promise<void> {
+    if (!window.confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+
+    try {
+      setDeletingUserId(userId);
+      setError(null);
+
+      await deleteUser(userId);
+      setUsers((current) => current.filter((user) => user.id !== userId));
+      setToastMessage('User deleted successfully.');
+    } catch (requestError) {
+      if (requestError instanceof AxiosError && requestError.response?.status === 401) {
+        auth.logout();
+        navigate('/login', { replace: true, state: { from: '/users' } });
+        return;
+      }
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setDeletingUserId(null);
+    }
+  }
 
   return (
     <section className="page-card">

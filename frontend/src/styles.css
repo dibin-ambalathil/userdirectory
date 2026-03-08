@@ -177,6 +177,47 @@ body {
   color: var(--text-main);
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-button,
+.delete-button {
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-button {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.edit-button:hover:not(:disabled) {
+  background: #bbdefb;
+}
+
+.delete-button {
+  background: #ffebee;
+  color: var(--danger);
+}
+
+.delete-button:hover:not(:disabled) {
+  background: #ffcdd2;
+}
+
+.edit-button:disabled,
+.delete-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .input-error,
 .status-message.error {
   color: var(--danger);
