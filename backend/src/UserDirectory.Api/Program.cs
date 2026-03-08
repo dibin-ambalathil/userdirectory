@@ -168,6 +168,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }))
+   .AllowAnonymous();
+
 // Initialize and seed the database on application startup
 await app.Services.InitializeDatabaseAsync();
 
