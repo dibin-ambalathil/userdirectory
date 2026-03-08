@@ -1,7 +1,13 @@
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using UserDirectory.Api.Auth;
+using UserDirectory.Api.Auth.Interfaces;
+using UserDirectory.Api.Auth.Services;
 using UserDirectory.Api.Middleware;
 using UserDirectory.Application;
 using UserDirectory.Infrastructure;
@@ -28,8 +34,55 @@ var allowedOrigins = (configuredOrigins is { Length: > 0 }
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToArray();
 
+var authOptions = builder.Configuration.GetSection("Auth").Get<AuthOptions>() ?? new AuthOptions();
+authOptions.Issuer = string.IsNullOrWhiteSpace(authOptions.Issuer) ? "UserDirectory.Api" : authOptions.Issuer.Trim();
+authOptions.Audience = string.IsNullOrWhiteSpace(authOptions.Audience) ? "user-directory-api" : authOptions.Audience.Trim();
+authOptions.LocalJwtKey = authOptions.LocalJwtKey?.Trim() ?? string.Empty;
+authOptions.TokenExpirationMinutes = Math.Max(authOptions.TokenExpirationMinutes, 1);
+authOptions.MaxFailedLoginAttempts = Math.Max(authOptions.MaxFailedLoginAttempts, 1);
+authOptions.LockoutMinutes = Math.Max(authOptions.LockoutMinutes, 1);
+authOptions.LoginRateLimitPerMinute = Math.Max(authOptions.LoginRateLimitPerMinute, 1);
+
+if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(authOptions.LocalJwtKey))
+{
+    // Keep local development convenient without persisting a reusable key in source files.
+    authOptions.LocalJwtKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+}
+
+if (string.IsNullOrWhiteSpace(authOptions.LocalJwtKey))
+{
+    throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
+}
+
+if (authOptions.LocalJwtKey.Length < 32)
+{
+    throw new InvalidOperationException("Auth:LocalJwtKey must be at least 32 characters.");
+}
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSingleton(authOptions);
+builder.Services.AddScoped<IUserCredentialVerifier, DatabaseUserCredentialVerifier>();
+builder.Services.AddScoped<IJwtTokenFactory, JwtTokenFactory>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AuthRateLimitPolicies.Login, httpContext =>
+    {
+        var clientAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"login:{clientAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = authOptions.LoginRateLimitPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontendCorsPolicy, policy =>
@@ -83,27 +136,19 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var issuer = builder.Configuration["Auth:Issuer"] ?? "UserDirectory.Api";
-        var audience = builder.Configuration["Auth:Audience"] ?? "user-directory-api";
-        var localJwtKey = builder.Configuration["Auth:LocalJwtKey"];
-        if (string.IsNullOrWhiteSpace(localJwtKey))
-        {
-            throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
-        }
-
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = issuer,
+            ValidIssuer = authOptions.Issuer,
             ValidateAudience = true,
-            ValidAudience = audience,
+            ValidAudience = authOptions.Audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(localJwtKey.Trim())),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.LocalJwtKey)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
 
-        options.RequireHttpsMetadata = builder.Configuration.GetValue("Auth:RequireHttpsMetadata", true);
+        options.RequireHttpsMetadata = authOptions.RequireHttpsMetadata;
     });
 
 builder.Services.AddAuthorization();
@@ -117,6 +162,7 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors(FrontendCorsPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

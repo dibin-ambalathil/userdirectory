@@ -1,9 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.RateLimiting;
+using UserDirectory.Api.Auth;
+using UserDirectory.Api.Auth.Interfaces;
 using UserDirectory.Api.Contracts;
 
 namespace UserDirectory.Api.Controllers;
@@ -12,22 +11,20 @@ namespace UserDirectory.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
 {
-    private const string HardcodedEmail = "test@mail.com";
-    private const string HardcodedPassword = "Qwer@4321";
+    private readonly IAuthService _authService;
 
-    private readonly IConfiguration _configuration;
-
-    public AuthController(IConfiguration configuration)
+    public AuthController(IAuthService authService)
     {
-        _configuration = configuration;
+        _authService = authService;
     }
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(AuthRateLimitPolicies.Login)]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public ActionResult<LoginResponse> Login([FromBody] LoginRequest? request)
+    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest? request, CancellationToken cancellationToken)
     {
         if (request is null)
         {
@@ -37,56 +34,12 @@ public sealed class AuthController : ControllerBase
         var email = request.Email?.Trim() ?? string.Empty;
         var password = request.Password ?? string.Empty;
 
-        if (!IsValidCredential(email, password))
+        var loginResponse = await _authService.LoginAsync(email, password, cancellationToken);
+        if (loginResponse is null)
         {
             return Unauthorized(new ErrorResponse("Invalid email or password."));
         }
 
-        return Ok(CreateLoginResponse(email));
-    }
-
-    private static bool IsValidCredential(string email, string password)
-    {
-        return string.Equals(email, HardcodedEmail, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(password, HardcodedPassword, StringComparison.Ordinal);
-    }
-
-    private LoginResponse CreateLoginResponse(string email)
-    {
-        var issuer = _configuration["Auth:Issuer"] ?? "UserDirectory.Api";
-        var audience = _configuration["Auth:Audience"] ?? "user-directory-api";
-        var jwtKey = _configuration["Auth:LocalJwtKey"];
-        if (string.IsNullOrWhiteSpace(jwtKey))
-        {
-            throw new InvalidOperationException("Auth:LocalJwtKey configuration is required.");
-        }
-
-        var expirationMinutes = Math.Max(_configuration.GetValue("Auth:TokenExpirationMinutes", 120), 1);
-
-        var now = DateTime.UtcNow;
-        var expiresAtUtc = now.AddMinutes(expirationMinutes);
-
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, email),
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(ClaimTypes.Name, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-        var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey.Trim())),
-            SecurityAlgorithms.HmacSha256);
-
-        var jwt = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            notBefore: now,
-            expires: expiresAtUtc,
-            signingCredentials: credentials);
-
-        var accessToken = new JwtSecurityTokenHandler().WriteToken(jwt);
-        return new LoginResponse(accessToken, expiresAtUtc);
+        return Ok(loginResponse);
     }
 }

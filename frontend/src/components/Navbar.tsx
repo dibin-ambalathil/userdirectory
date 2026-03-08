@@ -1,8 +1,26 @@
 import { NavLink } from 'react-router-dom';
 import { useAuthState } from '../auth/useAuthState';
 
+const navLinkClassName = ({ isActive }: { isActive: boolean }): string =>
+  isActive ? 'nav-link nav-link-active' : 'nav-link';
+
+const navItems = [
+  { to: '/users/add', label: 'Add' },
+  { to: '/users', label: 'List' }
+] as const;
+
 export function Navbar(): JSX.Element {
   const auth = useAuthState();
+
+  const loginAction = auth.isAuthConfigured ? (
+    <button className="primary-button" onClick={() => void auth.login()} type="button">
+      Login
+    </button>
+  ) : (
+    <NavLink className={navLinkClassName} to="/login">
+      Login
+    </NavLink>
+  );
 
   return (
     <header className="top-nav">
@@ -11,30 +29,20 @@ export function Navbar(): JSX.Element {
       </div>
 
       <nav className="nav-links" aria-label="Main navigation">
-        <NavLink className={({ isActive }) => (isActive ? 'nav-link nav-link-active' : 'nav-link')} to="/users/add">
-          Add
-        </NavLink>
-        <NavLink className={({ isActive }) => (isActive ? 'nav-link nav-link-active' : 'nav-link')} to="/users">
-          List
-        </NavLink>
+        {navItems.map((item) => (
+          <NavLink key={item.to} className={navLinkClassName} to={item.to}>
+            {item.label}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="auth-actions">
         {auth.isAuthenticated ? (
-          <button className="secondary-button" onClick={auth.logout} type="button">
+          <button className="secondary-button" onClick={() => void auth.logout()} type="button">
             Logout
           </button>
-        ) : auth.isAuthConfigured ? (
-          <button className="primary-button" onClick={() => void auth.login()} type="button">
-            Login
-          </button>
         ) : (
-          <>
-            <NavLink className={({ isActive }) => (isActive ? 'nav-link nav-link-active' : 'nav-link')} to="/login">
-              Login
-            </NavLink>
-            <span className="dev-badge">Local auth mode</span>
-          </>
+          loginAction
         )}
       </div>
     </header>

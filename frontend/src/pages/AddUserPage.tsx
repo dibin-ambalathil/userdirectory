@@ -106,10 +106,6 @@ export function AddUserPage(): JSX.Element {
         <p>Create a new directory entry.</p>
       </header>
 
-      {!auth.isAuthConfigured ? (
-        <p className="dev-auth-note">OIDC is not configured. Dev auth mode is active for local development.</p>
-      ) : null}
-
       <form className="form-grid" onSubmit={(event) => void handleSubmit(event)} noValidate>
         <label>
           Name
@@ -174,7 +170,7 @@ export function AddUserPage(): JSX.Element {
           <button className="primary-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save User'}
           </button>
-          {hasErrors ? <span className="hint-text">Please fix validation errors before submitting.</span> : null}
+          {hasErrors ? <span className="hint-text">Please all the details.</span> : null}
         </div>
       </form>
     </section>

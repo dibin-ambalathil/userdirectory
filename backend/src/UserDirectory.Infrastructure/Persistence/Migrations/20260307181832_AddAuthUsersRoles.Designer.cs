@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UserDirectory.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using UserDirectory.Infrastructure.Persistence;
 namespace UserDirectory.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(UserDirectoryDbContext))]
-    partial class UserDirectoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260307181832_AddAuthUsersRoles")]
+    partial class AddAuthUsersRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
@@ -66,9 +69,6 @@ namespace UserDirectory.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("FailedLoginAttempts")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -83,9 +83,6 @@ namespace UserDirectory.Infrastructure.Persistence.Migrations
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("LockoutEndAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PasswordHash")

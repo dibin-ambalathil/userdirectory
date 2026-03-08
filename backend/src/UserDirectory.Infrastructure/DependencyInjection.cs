@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using UserDirectory.Application.Features.Users.Interfaces;
 using UserDirectory.Infrastructure.Persistence;
 using UserDirectory.Infrastructure.Repositories;
@@ -25,6 +26,8 @@ public static class DependencyInjection
     {
         using var scope = serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<UserDirectoryDbContext>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var hostEnvironment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
 
         var dataSource = dbContext.Database.GetDbConnection().DataSource;
         if (!string.IsNullOrWhiteSpace(dataSource))
@@ -38,5 +41,6 @@ public static class DependencyInjection
 
         await dbContext.Database.MigrateAsync();
         await UserSeeder.SeedAsync(dbContext);
+        await AuthSeeder.SeedAsync(dbContext, configuration, hostEnvironment);
     }
 }
