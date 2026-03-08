@@ -8,25 +8,24 @@ using UserDirectory.Infrastructure.Security;
 namespace UserDirectory.Infrastructure.Seed;
 
 /// <summary>
-/// Seeds default authentication users and roles into the database.
-/// In Development, hardcoded test/admin users are created automatically.
-/// In Production, seed credentials must be provided via configuration or environment variables.
+/// Provides seeding functionality for authentication data including roles and users.
+/// Seeding occurs during application startup via the InitializeDatabaseAsync method.
 /// </summary>
 public static class AuthSeeder
 {
-    // Default test user credentials (Development only)
+    // Default seed user credentials for development environment
     private const string SeedEmail = "test@mail.com";
     private const string SeedPassword = "Qwer@4321";
     private const string SeedFirstName = "Test";
     private const string SeedLastName = "User";
 
-    // Default admin user credentials (Development only)
+    // Default admin seed user credentials for development environment
     private const string SeedAdminEmail = "admin@mail.com";
     private const string SeedAdminPassword = "Admin@4321";
     private const string SeedAdminFirstName = "System";
     private const string SeedAdminLastName = "Admin";
 
-    // Configuration keys for non-development seed user
+    // Configuration keys for production seed users (must be set via environment variables)
     private const string SeedUserEmailKey = "Auth:SeedUserEmail";
     private const string SeedUserPasswordKey = "Auth:SeedUserPassword";
     private const string SeedUserFirstNameKey = "Auth:SeedUserFirstName";
@@ -40,15 +39,10 @@ public static class AuthSeeder
     private const string SeedAdminLastNameKey = "Auth:SeedAdminLastName";
 
     /// <summary>
-    /// Seeds roles and users into the database.
-    /// Creates "Admin" and "User" roles if they do not exist.
-    /// Creates seed user and admin user based on environment and configuration.
-    /// Skips creation if the user already exists (matched by normalized email).
+    /// Seeds authentication roles and users into the database.
+    /// Creates Admin and User roles if they don't exist.
+    /// Seeds default users in development, or configured users in production.
     /// </summary>
-    /// <param name="dbContext">The database context for persistence.</param>
-    /// <param name="configuration">Application configuration (appsettings / env vars).</param>
-    /// <param name="hostEnvironment">Current hosting environment (Development, Production, etc.).</param>
-    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public static async Task SeedAsync(
         UserDirectoryDbContext dbContext,
         IConfiguration configuration,
@@ -81,14 +75,13 @@ public static class AuthSeeder
         {
             var authUser = await UpsertAuthUserAsync(dbContext, seedUser, cancellationToken);
 
-            // Assign "User" role if not already assigned
+            // Ensure seed user has User role
             if (authUser.UserRoles.All(assignment => assignment.RoleId != userRole.Id))
             {
                 authUser.UserRoles.Add(new AuthUserRole(authUser.Id, userRole.Id));
             }
 
-            // In Development, seed user gets Admin role automatically.
-            // In other environments, only if explicitly configured via Auth:SeedUserIsAdmin.
+            // Assign Admin role in development, or in production if explicitly configured
             var shouldAssignAdminRole = hostEnvironment.IsDevelopment() || IsSeedUserAdmin(configuration);
             if (shouldAssignAdminRole && authUser.UserRoles.All(assignment => assignment.RoleId != adminRole.Id))
             {
@@ -169,11 +162,14 @@ public static class AuthSeeder
     /// </summary>
     private static SeedUserDefinition? ResolveSeedUser(IConfiguration configuration, IHostEnvironment hostEnvironment)
     {
+        // In development environment, always seed with default test user
         if (hostEnvironment.IsDevelopment())
         {
             return new SeedUserDefinition(SeedEmail, SeedPassword, SeedFirstName, SeedLastName);
         }
 
+        // In production, only seed if all required configuration values are provided
+        // This prevents accidental seeding in production without explicit configuration
         var email = configuration[SeedUserEmailKey]?.Trim();
         var password = configuration[SeedUserPasswordKey];
         var firstName = configuration[SeedUserFirstNameKey]?.Trim();
@@ -185,7 +181,7 @@ public static class AuthSeeder
             || string.IsNullOrWhiteSpace(firstName)
             || string.IsNullOrWhiteSpace(lastName))
         {
-            return null;
+            return null; // No seeding in production without full config
         }
 
         return new SeedUserDefinition(email, password, firstName, lastName);
@@ -198,11 +194,13 @@ public static class AuthSeeder
     /// </summary>
     private static SeedUserDefinition? ResolveSeedAdminUser(IConfiguration configuration, IHostEnvironment hostEnvironment)
     {
+        // In development environment, always seed with default admin user
         if (hostEnvironment.IsDevelopment())
         {
             return new SeedUserDefinition(SeedAdminEmail, SeedAdminPassword, SeedAdminFirstName, SeedAdminLastName);
         }
 
+        // In production, only seed admin user if all required configuration values are provided
         var email = configuration[SeedAdminEmailKey]?.Trim();
         var password = configuration[SeedAdminPasswordKey];
         var firstName = configuration[SeedAdminFirstNameKey]?.Trim();
@@ -214,7 +212,7 @@ public static class AuthSeeder
             || string.IsNullOrWhiteSpace(firstName)
             || string.IsNullOrWhiteSpace(lastName))
         {
-            return null;
+            return null; // No seeding in production without full config
         }
 
         return new SeedUserDefinition(email, password, firstName, lastName);

@@ -15,3 +15,11 @@ export interface CreateUserPayload {
   state: string;
   pincode: string;
 }
+
+export interface UpdateUserPayload {
+  name: string;
+  age: number;
+  city: string;
+  state: string;
+  pincode: string;
+}
